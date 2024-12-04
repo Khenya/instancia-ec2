@@ -68,7 +68,8 @@ resource "aws_instance" "nginx-server" {
       "sudo mv /tmp/index.html /usr/share/nginx/html/",
       "sudo mv /tmp/style.css /usr/share/nginx/html/",
       "sudo mv /tmp/script.js /usr/share/nginx/html/",
-      "sudo chmod -R 755 /usr/share/nginx/html/"
+      "sudo chmod -R 755 /usr/share/nginx/html/",
+      "sudo systemctl restart nginx"
     ]
     connection {
       type        = "ssh"
