@@ -1,15 +1,16 @@
 name: Desplegando en nginx ec2
 on:
- push:
-   branches:
-     - main  # Change to your default branch
-
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        type: string
+        required: true
+        default: 'Manual Debug Build'
+        description: 'Release Notes'
 
 jobs:
  deploy:
    runs-on: ubuntu-latest
-
-
    steps:
      - name: Checkout repository
        uses: actions/checkout@v4
@@ -25,19 +26,12 @@ jobs:
          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
          aws-region: us-east-1
+         
      - name: Initialize Terraform
        run: terraform init
  
      - name: Terraform Plan
-       id: terraform-plan
-       run: terraform plan -out=tfplan
+       run: terraform plan -destroy
  
-     - name: Apply Terraform Plan
-       if: success()
-       run: terraform apply -input=false -auto-approve tfplan
- 
-     - name: Handle Terraform Errors
-       if: failure()
-       run: |
-           echo "Terraform Plan failed. Attempting to destroy resources..."
-           terraform destroy -auto-approve || echo "Destroy failed. Manual cleanup might be required."
+     - name: Apply Terraform changes
+       run: terraform apply -auto-approve
