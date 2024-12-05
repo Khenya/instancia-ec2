@@ -63,6 +63,9 @@ resource "aws_instance" "nginx-server" {
 
   provisioner "remote-exec" {
     inline = [
+      "sudo yum install -y nginx",
+      "sudo systemctl enable nginx",
+      "sudo systemctl start nginx",
       "sudo mkdir -p /usr/share/nginx/html",
       "sudo rm -f /usr/share/nginx/html/index.html",
       "sudo mv /tmp/index.html /usr/share/nginx/html/",
