@@ -1,6 +1,3 @@
-provider "aws" {
-  region = "us-east-1"
-}
 
 resource "aws_instance" "nginx-server" {
   ami           = "ami-0453ec754f44f9a4a" # Amazon Linux AMI for your region
