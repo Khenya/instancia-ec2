@@ -1,10 +1,10 @@
-
 resource "aws_instance" "nginx-server" {
-  ami           = "ami-0453ec754f44f9a4a" # Amazon Linux AMI for your region
+  count         = 2
+  ami           = "ami-0453ec754f44f9a4a"
   instance_type = "t2.micro"
 
   tags = {
-    Name        = "Upb-Nginx"
+    Name        = "Upb-Nginx-${count.index}"
     Environment = "test"
     Owner       = "abrendakhenya@gmail.com"
     Team        = "DevOps"
@@ -17,67 +17,10 @@ resource "aws_instance" "nginx-server" {
               sudo yum install -y nginx
               sudo systemctl enable nginx
               sudo systemctl start nginx
-
-              # Create a directory for the website
-              sudo mkdir -p /usr/share/nginx/html
               EOF
 
-  key_name = aws_key_pair.nginx-server-ssh.key_name
-  vpc_security_group_ids = [aws_security_group.nginx-server-sg.id]
-
-  provisioner "file" {
-    source      = "index.html"
-    destination = "/tmp/index.html"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = file("nginx-server.key")
-      host        = self.public_ip
-    }
-  }
-
-  provisioner "file" {
-    source      = "style.css"
-    destination = "/tmp/style.css"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = file("nginx-server.key")
-      host        = self.public_ip
-    }
-  }
-
-  provisioner "file" {
-    source      = "script.js"
-    destination = "/tmp/script.js"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = file("nginx-server.key")
-      host        = self.public_ip
-    }
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo yum install -y nginx",
-      "sudo systemctl enable nginx",
-      "sudo systemctl start nginx",
-      "sudo mkdir -p /usr/share/nginx/html",
-      "sudo rm -f /usr/share/nginx/html/index.html",
-      "sudo mv /tmp/index.html /usr/share/nginx/html/",
-      "sudo mv /tmp/style.css /usr/share/nginx/html/",
-      "sudo mv /tmp/script.js /usr/share/nginx/html/",
-      "sudo chmod -R 755 /usr/share/nginx/html/",
-      "sudo systemctl restart nginx"
-    ]
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = file("nginx-server.key")
-      host        = self.public_ip
-    }
-  }
+  key_name               = aws_key_pair.nginx-server-ssh.key_name
+  vpc_security_group_ids = [aws_security_group.nginx-server.id]
 }
 
 resource "aws_key_pair" "nginx-server-ssh" {
@@ -85,8 +28,8 @@ resource "aws_key_pair" "nginx-server-ssh" {
   public_key = file("nginx-server.key.pub")
 }
 
-resource "aws_security_group" "nginx-server-sg" {
-  name        = "nginx-server-sg"
+resource "aws_security_group" "nginx-server" {
+  name        = "nginx-server"
   description = "Security group allowing SSH and HTTP access"
 
   ingress {
@@ -108,5 +51,31 @@ resource "aws_security_group" "nginx-server-sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_elb" "nginx-elb" {
+  name               = "nginx-elb"
+  availability_zones = ["us-east-1a", "us-east-1b"] 
+
+  listener {
+    instance_port     = 80
+    instance_protocol = "HTTP"
+    lb_port           = 80
+    lb_protocol       = "HTTP"
+  }
+
+  health_check {
+    target              = "HTTP:80/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+
+  instances = aws_instance.nginx-server[*].id
+
+  tags = {
+    Name = "nginx-elb"
   }
 }
